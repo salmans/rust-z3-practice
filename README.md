@@ -1,2 +1,8 @@
 # rust-z3-practice
-solving a number of SAT problems using Z3
+
+Sample SAT problems solved using Z3:
+
+- simple_sat.rs: a simple satisfiable problem
+- simple_unsat.rs: a simple unsatisfiable problem
+- hamiltonian_cycle.rs: finds a Hamiltonian cycle for a given graph.
+- n_queens.rs: solves the n-queen problem for a given number of queens.

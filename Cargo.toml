@@ -1,0 +1,24 @@
+[package]
+name = "rust-z3-practice"
+version = "0.1.0"
+authors = ["Salman Saghafi <salman.saghafi@me.com>"]
+edition = "2018"
+
+[[bin]]
+name = "simple-sat"
+path = "src/simple_sat.rs"
+
+[[bin]]
+name = "simple-unsat"
+path = "src/simple_unsat.rs"
+
+[[bin]]
+name = "n-queens"
+path = "src/n_queens.rs"
+
+[[bin]]
+name = "hamiltonian_cycle"
+path = "src/hamiltonian_cycle.rs"
+
+[dependencies]
+z3 = "0.3.2"
