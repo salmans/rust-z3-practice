@@ -2,19 +2,44 @@ use z3::*;
 use std::collections::HashMap;
 
 // Returns edges corresponding to a Hamiltonian cycle for the graph described by the matrix below:
-const SIZE: usize = 5;
+const SIZE: usize = 4;
 const GRAPH: [[i8; SIZE]; SIZE] = [
-    [0, 1, 1, 1, 1],
-    [1, 0, 0, 1, 0],
-    [1, 0, 0, 1, 1],
-    [1, 1, 1, 0, 0],
-    [1, 0, 1, 0, 0],
+    [0, 1, 0, 0],
+    [0, 0, 1, 0],
+    [0, 0, 0, 1],
+    [1, 1, 0, 0],
 ];
+
+//const SIZE: usize = 4;
+//const GRAPH: [[i8; SIZE]; SIZE] = [
+//    [0, 1, 0, 0],
+//    [0, 0, 1, 0],
+//    [0, 0, 0, 1],
+//    [0, 1, 0, 0],
+//];
+
+//const SIZE: usize = 5;
+//const GRAPH: [[i8; SIZE]; SIZE] = [
+//    [0, 1, 1, 1, 1],
+//    [1, 0, 0, 1, 0],
+//    [1, 0, 0, 1, 1],
+//    [1, 1, 1, 0, 0],
+//    [1, 0, 1, 0, 0],
+//];
 
 // Maps the position of a node in the Hamiltonian cycle to the node.
 type PositionMap<'ctx> = HashMap<(usize, usize), Ast<'ctx>>;
 
 fn main() {
+    {
+        println!("Finding a Hamiltonian cycle for:");
+        let rows_to_string: Vec<String> = GRAPH.iter()
+            .map(|r| format!("{:?}", r))
+            .collect();
+        println!("{}", rows_to_string.join("\n"));
+        println!();
+    }
+
     let cfg = Config::new();
     let ctx = Context::new(&cfg);
     let solver = Solver::new(&ctx);
@@ -128,17 +153,19 @@ fn form_cycle(solver: &Solver, pos: &PositionMap) {
 }
 
 fn print_solution(solver: &Solver, graph: &PositionMap) {
-    solver.check();
-    let model = solver.get_model();
-    let mut nodes: Vec<String> = Vec::new();
+    if solver.check() {
+        let model = solver.get_model();
+        let mut nodes: Vec<String> = Vec::new();
 
-    for i in 0..=SIZE {
-        for j in 0..SIZE {
-            if model.eval(graph.get(&(i, j)).unwrap()).unwrap().as_bool().unwrap() {
-                nodes.push(j.to_string());
+        for i in 0..=SIZE {
+            for j in 0..SIZE {
+                if model.eval(graph.get(&(i, j)).unwrap()).unwrap().as_bool().unwrap() {
+                    nodes.push(j.to_string());
+                }
             }
         }
+        println!("{}", nodes.join(" -> "))
+    } else {
+        println!("There is no Hamiltonian cycle.")
     }
-
-    println!("{}", nodes.join(" -> "))
 }

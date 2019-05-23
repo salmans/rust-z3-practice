@@ -6,6 +6,11 @@ const SIZE: i32 = 8;
 type ConstantMap<'ctx> = HashMap<(i32, i32), Ast<'ctx>>;
 
 fn main() {
+    {
+        println!("Putting {} queens on the board:", SIZE);
+        println!();
+    }
+
     let cfg = Config::new();
     let ctx = Context::new(&cfg);
     let solver = Solver::new(&ctx);
@@ -138,20 +143,21 @@ fn check_backslashes(solver: &Solver, constants: &ConstantMap) {
 }
 
 fn print_solution(solver: &Solver, constants: &ConstantMap) {
-    solver.check();
-    let model = solver.get_model();
-
-    println!();
-    for i in 0..SIZE {
-        for j in 0..SIZE {
-            let value = model.eval(constants.get(&(i, j)).unwrap()).unwrap()
-                .as_bool().unwrap();
-            if value {
-                print!(" X ");
-            } else {
-                print!(" - ");
+    if solver.check() {
+        let model = solver.get_model();
+        for i in 0..SIZE {
+            for j in 0..SIZE {
+                let value = model.eval(constants.get(&(i, j)).unwrap())
+                    .unwrap().as_bool().unwrap();
+                if value {
+                    print!(" X ");
+                } else {
+                    print!(" - ");
+                }
             }
+            println!();
         }
-        println!();
+    } else {
+        println!("There is no solution.")
     }
 }
