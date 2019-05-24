@@ -24,7 +24,9 @@ fn main() {
     solver.assert(&not_x_or_y);
     solver.assert(&x_and_z);
 
-    println!("finding a solution for:");
+    println!();
+    println!("finding a model for:");
+    eprintln!();
     println!("{}", solver);
 
     if !solver.check() {

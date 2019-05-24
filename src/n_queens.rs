@@ -1,7 +1,12 @@
 use z3::*;
 use std::collections::HashMap;
 
+// Number of queens and the size of the board:
 const SIZE: i32 = 8;
+
+// Number of solutions to find (finds all solutions if None)
+const TOTAL_COUNT: Option<i32> = None;
+
 
 type ConstantMap<'ctx> = HashMap<(i32, i32), Ast<'ctx>>;
 
@@ -35,7 +40,22 @@ fn main() {
     // Check diagonally (top left to bottom right):
     check_backslashes(&solver, &constants);
 
-    print_solution(&solver, &constants);
+
+    let mut model_count = 0;
+    while solver.check() {
+        let model = solver.get_model();
+        print_model(&model, &constants);
+
+        // add constraints to get a different model:
+        different_model(&ctx, &solver, &model, &constants);
+        model_count += 1;
+
+        if TOTAL_COUNT.map_or(false, |c| c == model_count) {
+            break;
+        }
+    }
+
+    println!("{} models were found.", model_count)
 }
 
 fn build_constants(ctx: &Context) -> ConstantMap {
@@ -142,22 +162,31 @@ fn check_backslashes(solver: &Solver, constants: &ConstantMap) {
     }
 }
 
-fn print_solution(solver: &Solver, constants: &ConstantMap) {
-    if solver.check() {
-        let model = solver.get_model();
-        for i in 0..SIZE {
-            for j in 0..SIZE {
-                let value = model.eval(constants.get(&(i, j)).unwrap())
-                    .unwrap().as_bool().unwrap();
-                if value {
-                    print!(" X ");
-                } else {
-                    print!(" - ");
-                }
-            }
-            println!();
+fn different_model(ctx: &Context, solver: &Solver, model: &Model, constants: &ConstantMap) {
+    solver.push();
+    let mut formula = Ast::from_bool(ctx, false);
+    for i in 0..SIZE {
+        for j in 0..SIZE {
+            let constant = constants.get(&(i, j)).unwrap();
+            let value = model.eval(constant).unwrap();
+            formula = formula.or(&[&constant._eq(&value).not()])
         }
-    } else {
-        println!("There is no solution.")
     }
+    solver.assert(&formula);
+}
+
+fn print_model(model: &Model, constants: &ConstantMap) {
+    for i in 0..SIZE {
+        for j in 0..SIZE {
+            let value = model.eval(constants.get(&(i, j)).unwrap())
+                .unwrap().as_bool().unwrap();
+            if value {
+                print!(" X ");
+            } else {
+                print!(" - ");
+            }
+        }
+        println!();
+    }
+    println!();
 }

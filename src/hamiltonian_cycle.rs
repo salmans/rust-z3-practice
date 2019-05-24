@@ -65,7 +65,12 @@ fn main() {
     form_cycle(&solver, &pos);
 
 
-    print_solution(&solver, &pos);
+    if solver.check() {
+        let model = solver.get_model();
+        print_model(&model, &pos);
+    } else {
+        println!("There is no Hamiltonian cycle.")
+    }
 }
 
 fn build_positions(ctx: &Context) -> PositionMap {
@@ -152,20 +157,15 @@ fn form_cycle(solver: &Solver, pos: &PositionMap) {
     }
 }
 
-fn print_solution(solver: &Solver, graph: &PositionMap) {
-    if solver.check() {
-        let model = solver.get_model();
-        let mut nodes: Vec<String> = Vec::new();
+fn print_model(model: &Model, graph: &PositionMap) {
+    let mut nodes: Vec<String> = Vec::new();
 
-        for i in 0..=SIZE {
-            for j in 0..SIZE {
-                if model.eval(graph.get(&(i, j)).unwrap()).unwrap().as_bool().unwrap() {
-                    nodes.push(j.to_string());
-                }
+    for i in 0..=SIZE {
+        for j in 0..SIZE {
+            if model.eval(graph.get(&(i, j)).unwrap()).unwrap().as_bool().unwrap() {
+                nodes.push(j.to_string());
             }
         }
-        println!("{}", nodes.join(" -> "))
-    } else {
-        println!("There is no Hamiltonian cycle.")
     }
+    println!("{}", nodes.join(" -> "))
 }

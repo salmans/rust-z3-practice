@@ -1,6 +1,6 @@
 use z3::*;
 
-/// Simple test to get a solution for a satisfiable problem:
+/// Simple test to get a model for a satisfiable problem:
 /// x -> y
 /// y -> x
 fn main() {
@@ -20,12 +20,14 @@ fn main() {
     solver.assert(&x_or_not_y);
     solver.assert(&not_x_or_y);
 
-    println!("finding a solution for:");
+    println!();
+    println!("finding a model for:");
+    println!();
     println!("{}", solver);
 
     if solver.check() {
         let model = solver.get_model();
-        println!("solution:");
+        println!("model:");
         println!("x -> {}", model.eval(&x).unwrap().as_bool().unwrap());
         println!("y -> {}", model.eval(&y).unwrap().as_bool().unwrap());
     }
