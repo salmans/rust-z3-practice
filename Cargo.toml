@@ -17,8 +17,8 @@ name = "n-queens"
 path = "src/n_queens.rs"
 
 [[bin]]
-name = "hamiltonian_cycle"
+name = "hamiltonian-cycle"
 path = "src/hamiltonian_cycle.rs"
 
 [dependencies]
-z3 = "0.3.2"
+z3 = "0.12.1"
