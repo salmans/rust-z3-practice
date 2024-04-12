@@ -20,5 +20,9 @@ path = "src/n_queens.rs"
 name = "hamiltonian-cycle"
 path = "src/hamiltonian_cycle.rs"
 
+[[bin]]
+name = "cpuly"
+path = "src/cpuly.rs"
+
 [dependencies]
 z3 = "0.12.1"
