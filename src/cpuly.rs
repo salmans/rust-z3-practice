@@ -37,10 +37,11 @@ const VARNISH: u8 = 0;
 const H2O: u8 = 1;
 
 fn main() {
-    let cfg = Config::new();
+    let mut cfg = Config::new();
+    cfg.set_timeout_msec(5000); // set a 5 second timeout
+
     let ctx = Context::new(&cfg);
     let solver = Solver::new(&ctx);
-    solver.push();
 
     // Keep CPU costant names in a vector to refer to them by index.
     let mut cpus = Vec::new();
@@ -88,35 +89,49 @@ fn main() {
     // The total number of CPUs assigned to H2O is 52
     let elements = cpus.iter().collect::<Vec<_>>();
     let sum = ast::Int::add(&ctx, elements.as_slice());
-    solver.assert(&sum._eq(&ast::Int::from_u64(&ctx, 52 * H2O as u64)));
+    solver.assert(&sum._eq(&ast::Int::from_u64(&ctx, 72 * H2O as u64)));
 
-    if solver.check() == SatResult::Sat {
-        let mut model = solver.get_model().unwrap();
-        print_model(&model, &cpus);
+    match solver.check() {
+        SatResult::Sat => {
+            let mut model = solver.get_model().unwrap();
+            print_model(&model, &cpus);
 
-        // Optimize while there's an answer:
-        while let Some(m) = optimize(&ctx, &solver, model, &cpus) {
-            print_model(&m, &cpus);
-            model = m;
+            // Optimize while there's an answer:
+            while let Some(m) = optimize(&ctx, &solver, model, &cpus) {
+                print_model(&m, &cpus);
+                model = m;
+            }
         }
-    } else {
-        println!("no solution")
+        SatResult::Unsat => {
+            println!("no solution");
+        }
+        SatResult::Unknown => {
+            println!("unknown result or timeout reached");
+        }
     }
 }
 
 // Given an existing solution, tries to find a new solution where the maximum
-// number of CPUs assigned to H2O in all NUMA zones is (strinctly) less than
-// the maximum number of CPUs assigned to NUMA zones of the existing solution.
+// number of CPUs assigned to H2O in different NUMA zones are more uniform.
+// In each iteration, we find the zone with maximum number of CPUs assigned to
+// H2O, and ask the solver to give a new solution where (1) keep the NUMA zones
+// that are under the maximum threshold, under the maximum threshold, and (2)
+// try to assign fewer H2O processes to *at least one* NUMA zone that has the
+// maximum number of H2O processes.
 fn optimize<'ctx>(
     ctx: &Context,
     solver: &'ctx Solver,
     model: Model,
     cpus: &[ast::Int],
 ) -> Option<Model<'ctx>> {
+    fn sum_numa_zone(n: &[usize], model: &Model, cpus: &[ast::Int]) -> u8 {
+        n.iter().map(|i| get_cpu_work(&model, cpus, *i)).sum::<u8>()
+    }
+
     // Find the maximum number of CPUs in a NUMA zone.
     let mut max = 0;
     for n in NUMA {
-        let sum = n.iter().map(|i| get_cpu_work(&model, cpus, *i)).sum::<u8>();
+        let sum = sum_numa_zone(&n, &model, cpus);
         if sum > max {
             max = sum;
         }
@@ -124,21 +139,42 @@ fn optimize<'ctx>(
 
     solver.push(); // Save the existing constraints.
 
+    // Building an expressiont to decrease the H2O processes assigned to
+    // at least one NUMA zone that has the maximum H2O processes in the
+    // existing solution.
+    let mut decrease_some_max_exp = ast::Bool::from_bool(&ctx, false);
+
     // Ask for a new solution where every NUMA zone is assigned to a number
     // of H2O processes, less than `max`.
     for n in NUMA {
         let elems = n.iter().map(|i| &cpus[*i]).collect::<Vec<_>>();
-        let sum = ast::Int::add(&ctx, elems.as_slice());
-        let less = sum.lt(&ast::Int::from_u64(&ctx, max as u64));
-        solver.assert(&less);
+        let sum_exp = ast::Int::add(&ctx, elems.as_slice());
+        let lt_exp = sum_exp.lt(&ast::Int::from_u64(&ctx, max as u64));
+
+        let sum = sum_numa_zone(&n, &model, cpus);
+        if sum == max {
+            decrease_some_max_exp = ast::Bool::or(&ctx, &[&decrease_some_max_exp, &lt_exp]);
+            let le_exp = sum_exp.le(&ast::Int::from_u64(&ctx, max as u64));
+            solver.assert(&le_exp);
+        } else {
+            solver.assert(&lt_exp);
+        }
     }
 
-    if solver.check() == SatResult::Sat {
-        let model = solver.get_model();
-        solver.pop(1); // Backtrack (maybe for the next round of minimization).
-        model
-    } else {
-        None
+    solver.assert(&decrease_some_max_exp);
+
+    let sat_result = solver.check();
+    match sat_result {
+        SatResult::Sat => {
+            let model = solver.get_model();
+            solver.pop(1); // Backtrack (maybe for the next round of minimization).
+            model
+        }
+        SatResult::Unsat => None,
+        SatResult::Unknown => {
+            println!("unknown result or timeout reached");
+            None
+        }
     }
 }
 
